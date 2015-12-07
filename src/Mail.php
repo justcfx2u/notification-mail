@@ -27,6 +27,7 @@ class Mail extends Notification
         foreach ($notifications as $customerReference => $notificationTypes) {
 
             $mails = [];
+            $tickets = [];
 
             foreach ($notificationTypes as $notificationType => $tickets) {
 
