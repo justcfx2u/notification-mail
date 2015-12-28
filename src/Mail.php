@@ -96,9 +96,10 @@ class Mail extends Notification
                     /*
                      * TODO:
                      * - catch swift error on SendMail
-                     * - validate all mail addresses
+                     * - validate all mail addresses (again)
                      */
                     $iodef = new Iodef\Writer();
+                    $iodef->formatOutput = true;
                     $iodef->write([
                         [
                             'name' => 'IODEF-Document',
@@ -106,12 +107,7 @@ class Mail extends Notification
                             'value' => $this->iodefDocument,
                         ]
                     ]);
-
-                    // TODO - bug marksg to enable output formatting. For now this is a temporally fix.
-                    $dom = new \DOMDocument;
-                    $dom->formatOutput = true;
-                    $dom->loadXML($iodef->outputMemory());
-                    $XmlAttachmentData = $dom->saveXML();
+                    $XmlAttachmentData = $iodef->outputMemory();
 
                     $sent = SendMail::raw(
                         $mail,
