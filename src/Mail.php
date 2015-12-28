@@ -254,7 +254,7 @@ class Mail extends Notification
                 $recordItem->setAttributes(
                     [
                         'dtype'     => 'ext-value',
-                        'ext-type'  => 'json',
+                        'ext-dtype'  => 'json',
                     ]
                 );
                 $recordItem->value = $event->information;
@@ -291,7 +291,7 @@ class Mail extends Notification
                 $historySubmitter = new Iodef\Elements\AdditionalData;
                 $historySubmitter->setAttributes(
                     [
-                        'name' => 'submitter',
+                        'meaning' => 'submitter',
                     ]
                 );
                 $historySubmitter->value = "{$note->submitter}";
@@ -300,7 +300,7 @@ class Mail extends Notification
                 $historyNote = new Iodef\Elements\AdditionalData;
                 $historyNote->setAttributes(
                     [
-                        'name' => 'text',
+                        'meaning' => 'text',
                     ]
                 );
                 $historyNote->value = "{$note->text}";
