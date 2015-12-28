@@ -192,10 +192,6 @@ class Mail extends Notification
         $assessment->addChild($impact);
         $incident->addChild($assessment);
 
-        // Add a bogus method as its required in the LIB, but not the RFC
-        $method = new Iodef\Elements\Method();
-        $incident->addChild($method);
-
         // Add Origin/Creator contact information for this ticket
         $contact = new Iodef\Elements\Contact();
         $contact->setAttributes(
@@ -239,9 +235,9 @@ class Mail extends Notification
 
         // Add ticket events as records
         if ($ticket->events->count() >= 1) {
-            $eventData = new Iodef\Elements\EventData();
-
             foreach ($ticket->events as $event) {
+                $eventData = new Iodef\Elements\EventData();
+
                 $record = new Iodef\Elements\Record;
 
                 $recordData = new Iodef\Elements\RecordData;
@@ -267,9 +263,9 @@ class Mail extends Notification
                 $record->addChild($recordData);
 
                 $eventData->addChild($record);
-            }
 
-            $incident->addChild($eventData);
+                $incident->addChild($eventData);
+            }
         }
 
         // Add ticket notes as history items
