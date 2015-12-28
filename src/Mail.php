@@ -39,9 +39,9 @@ class Mail extends Notification
                     $this->addIodefObject($ticket);
 
                     $replacements = [
-                        'IP_CONTACT_ASH_LINK'           => config('main.ash.url') . 'collect/' .
+                        'IP_CONTACT_ASH_LINK'           => config('main.ash.url') . 'collect/' . $ticket->id . '/' .
                             md5($ticket->id . $ticket->ip . $ticket->ip_contact_reference),
-                        'DOMAIN_CONTACT_ASH_LINK'       => config('main.ash.url') . 'collect/' .
+                        'DOMAIN_CONTACT_ASH_LINK'       => config('main.ash.url') . 'collect/' . $ticket->id . '/' .
                             md5($ticket->id . $ticket->ip . $ticket->domain_contact_reference),
                         'TICKET_NUMBER'                 => $ticket->id,
                         'TICKET_IP'                     => $ticket->ip,
