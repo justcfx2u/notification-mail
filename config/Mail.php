@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'notification' => [
+        'name'          => 'Mail',
+        'description'   => 'Sends notifications using e-mail',
+        'enabled'       => false,
+    ],
+
     'templates' => [
 
         'ip_box'                        => '

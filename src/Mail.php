@@ -5,7 +5,7 @@ namespace AbuseIO\Notification;
 use Config;
 use Mail as SendMail;
 use Marknl\Iodef;
-use Zend\XmlRpc\Generator\DomDocument;
+use Log;
 
 class Mail extends Notification
 {
@@ -16,6 +16,8 @@ class Mail extends Notification
      */
     public function __construct()
     {
+        parent::__construct($this);
+
         $this->iodefDocument = new Iodef\Elements\IODEFDocument();
     }
 
@@ -25,9 +27,6 @@ class Mail extends Notification
      */
     public function send($notifications)
     {
-        // TODO - Fix config service provider (move parser one into laravel default?)
-        Config::set('notifications.mail', include('/opt/abuseio/vendor/abuseio/notification-mail/config/Mail.php'));
-
         foreach ($notifications as $customerReference => $notificationTypes) {
 
             $mails = [];
@@ -52,7 +51,11 @@ class Mail extends Notification
                         'TICKET_EVENT_COUNT'            => $ticket->events->count(),
                     ];
 
-                    $box = config("notifications.mail.templates.{$notificationType}_box");
+                    $box = config("{$this->configBase}.templates.{$notificationType}_box");
+
+                    if (empty($box)) {
+                        return $this->failed('Configuration error for notifier. Not all required fields are configured');
+                    }
 
                     foreach ($replacements as $search => $replacement) {
                         $box = str_replace("<<{$search}>>", $replacement, $box);
@@ -86,8 +89,8 @@ class Mail extends Notification
                         'TICKET_COUNT'                  => count($tickets),
                     ];
 
-                    $subject = config("notifications.mail.templates.subject");
-                    $mail = config('notifications.mail.templates.mail');
+                    $subject = config("{$this->configBase}.templates.subject");
+                    $mail = config("{$this->configBase}.templates.mail");
 
                     foreach ($replacements as $search => $replacement) {
                         $mail = str_replace("<<{$search}>>", $replacement, $mail);
@@ -142,7 +145,7 @@ class Mail extends Notification
 
         }
 
-        return true;
+        return $this->success();
 
     }
     
