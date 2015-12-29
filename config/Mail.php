@@ -4,7 +4,7 @@ return [
     'notification' => [
         'name'          => 'Mail',
         'description'   => 'Sends notifications using e-mail',
-        'enabled'       => false,
+        'enabled'       => true,
     ],
 
     'templates' => [
