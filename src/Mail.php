@@ -5,11 +5,17 @@ namespace AbuseIO\Notification;
 use Config;
 use Mail as SendMail;
 use Marknl\Iodef;
-use Log;
 
+/**
+ * Class Mail
+ * @package AbuseIO\Notification
+ */
 class Mail extends Notification
 {
-    private  $iodefDocument;
+    /**
+     * @var Iodef\Elements\IODEFDocument
+     */
+    private $iodefDocument;
 
     /**
      * Create a new Notification instance
@@ -23,6 +29,8 @@ class Mail extends Notification
 
     /**
      * Sends out mail notifications for a specific $customerReference
+     *
+     * @param array $notifications
      * @return boolean  Returns if succeeded or not
      */
     public function send($notifications)
@@ -35,13 +43,15 @@ class Mail extends Notification
             foreach ($notificationTypes as $notificationType => $tickets) {
 
                 foreach ($tickets as $ticket) {
-                    $this->addIodefObject($ticket);
+                    $token['ip']        = md5($ticket->id . $ticket->ip . $ticket->ip_contact_reference);
+                    $token['domain']    = md5($ticket->id . $ticket->ip . $ticket->domain_contact_reference);
+                    $ashUrl             = config('main.ash.url') . 'collect/' . $ticket->id . '/';
+
+                    $this->addIodefObject($ticket, $token[$notificationType], $ashUrl);
 
                     $replacements = [
-                        'IP_CONTACT_ASH_LINK'           => config('main.ash.url') . 'collect/' . $ticket->id . '/' .
-                            md5($ticket->id . $ticket->ip . $ticket->ip_contact_reference),
-                        'DOMAIN_CONTACT_ASH_LINK'       => config('main.ash.url') . 'collect/' . $ticket->id . '/' .
-                            md5($ticket->id . $ticket->ip . $ticket->domain_contact_reference),
+                        'IP_CONTACT_ASH_LINK'           => $ashUrl . $token['ip'],
+                        'DOMAIN_CONTACT_ASH_LINK'       => $ashUrl . $token['domain'],
                         'TICKET_NUMBER'                 => $ticket->id,
                         'TICKET_IP'                     => $ticket->ip,
                         'TICKET_DOMAIN'                 => $ticket->domain,
@@ -54,7 +64,9 @@ class Mail extends Notification
                     $box = config("{$this->configBase}.templates.{$notificationType}_box");
 
                     if (empty($box)) {
-                        return $this->failed('Configuration error for notifier. Not all required fields are configured');
+                        return $this->failed(
+                            'Configuration error for notifier. Not all required fields are configured'
+                        );
                     }
 
                     foreach ($replacements as $search => $replacement) {
@@ -103,19 +115,20 @@ class Mail extends Notification
                      */
                     $iodef = new Iodef\Writer();
                     $iodef->formatOutput = true;
-                    $iodef->write([
+                    $iodef->write(
                         [
-                            'name' => 'iodef:IODEF-Document',
-                            'attributes' => $this->iodefDocument->getAttributes(),
-                            'value' => $this->iodefDocument,
+                            [
+                                'name' => 'iodef:IODEF-Document',
+                                'attributes' => $this->iodefDocument->getAttributes(),
+                                'value' => $this->iodefDocument,
+                            ]
                         ]
-                    ]);
+                    );
                     $XmlAttachmentData = $iodef->outputMemory();
 
                     $sent = SendMail::raw(
                         $mail,
                         function ($message) use ($subject, $recipient, $XmlAttachmentData) {
-
                             $message->to($recipient);
                             $message->subject($subject);
                             $message->attachData(
@@ -148,8 +161,16 @@ class Mail extends Notification
         return $this->success();
 
     }
-    
-    private function addIodefObject($ticket) {
+
+    /**
+     * Adds IOdef data from this ticket to the document
+     *
+     * @param object $ticket Ticket model
+     * @param string $token ASH token
+     * @param string $ashUrl ASH Url
+     */
+    private function addIodefObject($ticket, $token, $ashUrl)
+    {
         // Add report type, origin and date
         $incident = new Iodef\Elements\Incident();
         $incident->setAttributes(
@@ -158,6 +179,31 @@ class Mail extends Notification
             ]
         );
 
+        // Add ASH Link
+        $ashlink = new Iodef\Elements\AdditionalData;
+        $ashlink->setAttributes(
+            [
+                'dtype'         => 'string',
+                'meaning'       => 'ASH Link',
+                'restriction'   => 'private',
+            ]
+        );
+        $ashlink->value = $ashUrl . $token;
+        $incident->addChild($ashlink);
+
+        // Add ASH Token seperatly
+        $ashtoken = new Iodef\Elements\AdditionalData;
+        $ashtoken->setAttributes(
+            [
+                'dtype'         => 'string',
+                'meaning'       => 'ASH Token',
+                'restriction'   => 'private',
+            ]
+        );
+        $ashtoken->value = $token;
+        $incident->addChild($ashtoken);
+
+        // Add Incident data
         $incidentID = new Iodef\Elements\IncidentID();
         $incidentID->setAttributes(
             [
@@ -237,7 +283,58 @@ class Mail extends Notification
             foreach ($ticket->events as $event) {
                 $eventData = new Iodef\Elements\EventData();
 
+                // Add the IP and Domain data to each record
+                $flow = new Iodef\Elements\Flow;
+
+                $system = new Iodef\Elements\System;
+                $system->setAttributes(
+                    [
+                        'category' => 'source',
+                        'spoofed' => 'no'
+                    ]
+                );
+
+                $node = new Iodef\Elements\Node;
+
+                if (!empty($ticket->ip)) {
+                    $address = new Iodef\Elements\Address;
+                    $category = [];
+                    if (filter_var($ticket->ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                        $category['category'] = 'ipv4-addr';
+                    } elseif (filter_var($ticket->ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                        $category['category'] = 'ipv6-addr';
+                    } else {
+                        $category['category'] = 'ext-value';
+                        $category['ext-category'] = 'unknown';
+
+                    }
+
+                    $address->setAttributes($category);
+                    $address->value = $ticket->ip;
+
+                    $node->addChild($address);
+
+                }
+
+                if (!empty($ticket->domain)) {
+                    $domain = new Iodef\Elements\NodeName;
+                    $domain->value = $ticket->domain;
+
+                    $node->addChild($domain);
+                }
+
+                $system->addChild($node);
+                $flow->addChild($system);
+                $eventData->addChild($flow);
+
+
+                // Now actually add event data
                 $record = new Iodef\Elements\Record;
+                $record->setAttributes(
+                    [
+                        'restriction'   => 'need-to-know',
+                    ]
+                );
 
                 $recordData = new Iodef\Elements\RecordData;
 
@@ -280,6 +377,7 @@ class Mail extends Notification
                 $historyItem->setAttributes(
                     [
                         'action' => 'status-new-info',
+                        'restriction' => 'need-to-know'
                     ]
                 );
 
