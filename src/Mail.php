@@ -108,11 +108,6 @@ class Mail extends Notification
                         $mail = str_replace("<<{$search}>>", $replacement, $mail);
                     }
 
-                    /*
-                     * TODO:
-                     * - catch swift error on SendMail
-                     * - validate all mail addresses (again)
-                     */
                     $iodef = new Iodef\Writer();
                     $iodef->formatOutput = true;
                     $iodef->write(
