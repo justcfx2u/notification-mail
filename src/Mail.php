@@ -3,7 +3,11 @@
 namespace AbuseIO\Notification;
 
 use Config;
-use Mail as SendMail;
+use Swift_SmtpTransport;
+use Swift_Mailer;
+use Swift_Message;
+use Swift_Signers_SMimeSigner;
+use Swift_Attachment;
 use Marknl\Iodef;
 
 /**
@@ -121,31 +125,68 @@ class Mail extends Notification
                     );
                     $XmlAttachmentData = $iodef->outputMemory();
 
-                    $sent = SendMail::raw(
-                        $mail,
-                        function ($message) use ($subject, $recipient, $XmlAttachmentData) {
-                            $message->to($recipient);
-                            $message->subject($subject);
-                            $message->attachData(
-                                $XmlAttachmentData,
-                                'iodef.xml',
-                                [
-                                    'as' => 'iodef.xml',
-                                    'mime' => 'text/xml',
-                                ]
-                            );
+                    $message = Swift_Message::newInstance();
 
-                            $message->from(
-                                Config::get('main.notifications.from_address'),
+                    if (!empty(Config::get('mail.smime.enabled')) &&
+                        (Config::get('mail.smime.enabled')) === true &&
+                        !empty(Config::get('mail.smime.certificate')) &&
+                        !empty(Config::get('mail.smime.key')) &&
+                        is_file(Config::get('mail.smime.certificate')) &&
+                        is_file(Config::get('mail.smime.key'))
+                    ) {
+                        $smimeSigner = Swift_Signers_SMimeSigner::newInstance();
+                        $smimeSigner->setSignCertificate(
+                            Config::get('mail.smime.certificate'),
+                            Config::get('mail.smime.key')
+                        );
+                        $message->attachSigner($smimeSigner);
+                    }
+
+                    $message->setFrom(
+                        [
+                            Config::get('main.notifications.from_address') =>
                                 Config::get('main.notifications.from_name')
-                            );
-
-                            if (!empty(Config::get('main.notifications.bcc_enabled'))) {
-                                $message->bcc(Config::get('main.notifications.bcc_address'));
-                            }
-
-                        }
+                        ]
                     );
+
+                    $message->setTo(
+                        [
+                            $recipient
+                        ]
+                    );
+
+                    if (!empty(Config::get('main.notifications.bcc_enabled'))) {
+                        $message->setBcc(
+                            [
+                                (Config::get('main.notifications.bcc_address'))
+                            ]
+                        );
+                    }
+
+                    $message->setPriority(1);
+
+                    $message->setSubject($subject);
+
+                    $message->setBody($mail, 'text/plain');
+
+                    $message->attach(Swift_Attachment::newInstance($XmlAttachmentData, 'iodef.xml', 'text/xml'));
+
+                    $transport = Swift_SmtpTransport::newInstance();
+
+                    $transport->setHost(config('mail.host'));
+                    $transport->setPort(config('mail.port'));
+                    $transport->setUsername(config('mail.username'));
+                    $transport->setPassword(config('mail.password'));
+                    $transport->setAuthMode(config('mail.encryption'));
+                    $transport->setEncryption(config('mail.encryption'));
+
+                    $mailer = Swift_Mailer::newInstance($transport);
+
+                    if (!$mailer->send($message)) {
+                        return $this->failed(
+                            "Error while sending message to {$recipient}"
+                        );
+                    }
 
                 }
 
