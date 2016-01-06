@@ -117,7 +117,7 @@ class Mail extends Notification
                     $iodef->write(
                         [
                             [
-                                'name' => 'iodef:IODEF-Document',
+                                'name' => 'IODEF-Document',
                                 'attributes' => $this->iodefDocument->getAttributes(),
                                 'value' => $this->iodefDocument,
                             ]
