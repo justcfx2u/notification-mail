@@ -239,6 +239,18 @@ class Mail extends Notification
         $ashtoken->value = $token;
         $incident->addChild($ashtoken);
 
+        // Add SourceID seperatly
+        $sourceID = new Iodef\Elements\AdditionalData;
+        $sourceID->setAttributes(
+            [
+                'dtype'         => 'string',
+                'meaning'       => 'SourceID',
+                'restriction'   => 'private',
+            ]
+        );
+        $sourceID->value = config('app.id');
+        $incident->addChild($sourceID);
+
         // Add Incident data
         $incidentID = new Iodef\Elements\IncidentID();
         $incidentID->setAttributes(
@@ -289,7 +301,7 @@ class Mail extends Notification
         $contact->addChild($contactName);
 
         $email = new Iodef\Elements\Email();
-        $email->value('jsmith@csirt.example.com');
+        $email->value('notifier@abuse.io');
         $contact->addChild($email);
 
         $incident->addChild($contact);
@@ -305,11 +317,11 @@ class Mail extends Notification
         );
 
         $contactName = new Iodef\Elements\ContactName();
-        $contactName->value('ISP Abusedesk');
+        $contactName->value(config('main.notifications.from_name'));
         $contact->addChild($contactName);
 
         $email = new Iodef\Elements\Email();
-        $email->value('abuse@isp.local');
+        $email->value(config('main.notifications.from_address'));
         $contact->addChild($email);
 
         $incident->addChild($contact);
