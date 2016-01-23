@@ -278,7 +278,7 @@ class Mail extends Notification
         $impact->setAttributes(
             [
                 'type'          => 'ext-value',
-                'ext-type'      => trans('classifications.' . $ticket->class_id . '.name'),
+                'ext-type'      => $ticket->class_id,
                 'severity'      => $severity[$ticket->type_id],
             ]
         );
