@@ -239,6 +239,31 @@ class Mail extends Notification
         $ashtoken->value = $token;
         $incident->addChild($ashtoken);
 
+        // Add AbuseDesk Status seperatly
+        $ticketStatus = new Iodef\Elements\AdditionalData;
+        $ticketStatus->setAttributes(
+            [
+                'dtype'         => 'string',
+                'meaning'       => 'Ticket status',
+                'restriction'   => 'private',
+            ]
+        );
+
+        $ticketStatus->value = $ticket->status_id;
+        $incident->addChild($ticketStatus);
+
+        // Add Contact Status seperatly
+        $contactStatus = new Iodef\Elements\AdditionalData;
+        $contactStatus->setAttributes(
+            [
+                'dtype'         => 'string',
+                'meaning'       => 'Contact status',
+                'restriction'   => 'private',
+            ]
+        );
+        $contactStatus->value = $ticket->contact_status_id;
+        $incident->addChild($contactStatus);
+
         // Add SourceID seperatly
         $sourceID = new Iodef\Elements\AdditionalData;
         $sourceID->setAttributes(
@@ -270,9 +295,9 @@ class Mail extends Notification
         $assessment = new Iodef\Elements\Assessment();
         $impact = new Iodef\Elements\Impact();
         $severity = [
-            '1' => 'low',
-            '2' => 'medium',
-            '3' => 'high',
+            'INFO' => 'low',
+            'ABUSE' => 'medium',
+            'ESCALATION' => 'high',
         ];
         echo $ticket->class;
         $impact->setAttributes(
