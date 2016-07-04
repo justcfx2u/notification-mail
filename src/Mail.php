@@ -2,12 +2,14 @@
 
 namespace AbuseIO\Notification;
 
+use AbuseIO\Models\Account;
 use Config;
 use Swift_SmtpTransport;
 use Swift_Mailer;
 use Swift_Message;
 use Swift_Signers_SMimeSigner;
 use Swift_Attachment;
+use URL;
 use Marknl\Iodef;
 
 /**
@@ -43,6 +45,7 @@ class Mail extends Notification
 
             $mails = [];
             $tickets = [];
+            $accounts = [];
 
             foreach ($notificationTypes as $notificationType => $tickets) {
 
@@ -85,31 +88,46 @@ class Mail extends Notification
                     if ($notificationType == 'ip') {
                         $recipient = $ticket->ip_contact_email;
                         $mails[$recipient][] = $box;
+                        $accounts[$recipient] = Account::find($ticket->ip_contact_account_id);
                     }
 
                     if ($notificationType == 'domain') {
                         $recipient = $ticket->domain_contact_email;
                         $mails[$recipient][] = $box;
+                        $accounts[$recipient] = Account::find($ticket->domain_contact_account_id);
                     }
-
                 }
-
             }
 
             foreach ($mails as $recipient => $boxes) {
 
                 if (!empty($boxes)) {
+                    
+                    // create a new message
+                    $message = Swift_Message::newInstance();
+
+                    // create the src url for the active brand logo
+                    if (!empty($accounts[$recipient]))
+                    {
+                        $account = $accounts[$recipient];
+                    } else {
+                        $account = Account::getSystemAccount();
+                    }
+                    $logo_url = URL::to('/ash/logo/' . $account->brand_id);
 
                     $replacements = [
                         'BOXES'                         => trim(implode('', $boxes)),
                         'TICKET_COUNT'                  => count($tickets),
+                        'LOGO_SRC'                      => $logo_url,
                     ];
 
                     $subject = config("{$this->configBase}.templates.subject");
-                    $mail = config("{$this->configBase}.templates.mail");
+                    $htmlmail = config("{$this->configBase}.templates.html_mail");
+                    $plainmail = config("{$this->configBase}.templates.plain_mail");
 
                     foreach ($replacements as $search => $replacement) {
-                        $mail = str_replace("<<{$search}>>", $replacement, $mail);
+                        $htmlmail = str_replace("<<{$search}>>", $replacement, $htmlmail);
+                        $plainmail = str_replace("<<{$search}>>", $replacement, $plainmail);
                     }
 
                     $iodef = new Iodef\Writer();
@@ -125,7 +143,6 @@ class Mail extends Notification
                     );
                     $XmlAttachmentData = $iodef->outputMemory();
 
-                    $message = Swift_Message::newInstance();
 
                     if (!empty(Config::get('mail.smime.enabled')) &&
                         (Config::get('mail.smime.enabled')) === true &&
@@ -149,12 +166,20 @@ class Mail extends Notification
                         ]
                     );
 
-                    $message->setTo(
-                        [
-                            $recipient
-                        ]
-                    );
-
+                    if (!empty(Config::get('mail.override_address'))) {
+                        $message->setTo(
+                            [
+                                Config::get('mail.override_address')
+                            ]
+                        );
+                    } else {
+                        $message->setTo(
+                            [
+                                $recipient
+                            ]
+                        );
+                    }
+                    
                     if (!empty(Config::get('main.notifications.bcc_enabled'))) {
                         $message->setBcc(
                             [
@@ -167,7 +192,8 @@ class Mail extends Notification
 
                     $message->setSubject($subject);
 
-                    $message->setBody($mail, 'text/plain');
+                    $message->setBody($htmlmail, 'text/html');
+                    $message->addPart($plainmail, 'text/plain');
 
                     $message->attach(Swift_Attachment::newInstance($XmlAttachmentData, 'iodef.xml', 'text/xml'));
 
@@ -177,7 +203,6 @@ class Mail extends Notification
                     $transport->setPort(config('mail.port'));
                     $transport->setUsername(config('mail.username'));
                     $transport->setPassword(config('mail.password'));
-                    $transport->setAuthMode(config('mail.encryption'));
                     $transport->setEncryption(config('mail.encryption'));
 
                     $mailer = Swift_Mailer::newInstance($transport);
