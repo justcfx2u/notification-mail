@@ -56,29 +56,18 @@ class Mail extends Notification
 
                     $this->addIodefObject($ticket, $token[$notificationType], $ashUrl);
 
-                    $replacements = [
-                        'IP_CONTACT_ASH_LINK'           => $ashUrl . $token['ip'],
-                        'DOMAIN_CONTACT_ASH_LINK'       => $ashUrl . $token['domain'],
-                        'TICKET_NUMBER'                 => $ticket->id,
-                        'TICKET_IP'                     => $ticket->ip,
-                        'TICKET_DOMAIN'                 => $ticket->domain,
-                        'TICKET_TYPE_NAME'              => trans("types.type.{$ticket->type_id}.name"),
-                        'TICKET_TYPE_DESCRIPTION'       => trans("types.type.{$ticket->type_id}.description"),
-                        'TICKET_CLASS_NAME'             => trans("classifications.{$ticket->class_id}.name"),
-                        'TICKET_EVENT_COUNT'            => $ticket->events->count(),
+                    $box = [
+                        'ticket_notification_type'      => $notificationType,
+                        'ip_contact_ash_link'           => $ashUrl . $token['ip'],
+                        'domain_contact_ash_link'       => $ashUrl . $token['domain'],
+                        'ticket_number'                 => $ticket->id,
+                        'ticket_ip'                     => $ticket->ip,
+                        'ticket_domain'                 => $ticket->domain,
+                        'ticket_type_name'              => trans("types.type.{$ticket->type_id}.name"),
+                        'ticket_type_description'       => trans("types.type.{$ticket->type_id}.description"),
+                        'ticket_class_name'             => trans("classifications.{$ticket->class_id}.name"),
+                        'ticket_event_count'            => $ticket->events->count(),
                     ];
-
-                    $box = config("{$this->configBase}.templates.{$notificationType}_box");
-
-                    if (empty($box)) {
-                        return $this->failed(
-                            'Configuration error for notifier. Not all required fields are configured'
-                        );
-                    }
-
-                    foreach ($replacements as $search => $replacement) {
-                        $box = str_replace("<<{$search}>>", $replacement, $box);
-                    }
 
                     /*
                      * Even that all these tickets relate to the same customer reference, the contacts might be
@@ -116,19 +105,18 @@ class Mail extends Notification
                     $logo_url = URL::to('/ash/logo/' . $account->brand_id);
 
                     $replacements = [
-                        'BOXES'                         => trim(implode('', $boxes)),
-                        'TICKET_COUNT'                  => count($tickets),
-                        'LOGO_SRC'                      => $logo_url,
+                        'boxes'                         => $boxes,
+                        'ticket_count'                  => count($tickets),
+                        'logo_src'                      => $logo_url,
                     ];
 
                     $subject = config("{$this->configBase}.templates.subject");
                     $htmlmail = config("{$this->configBase}.templates.html_mail");
                     $plainmail = config("{$this->configBase}.templates.plain_mail");
 
-                    foreach ($replacements as $search => $replacement) {
-                        $htmlmail = str_replace("<<{$search}>>", $replacement, $htmlmail);
-                        $plainmail = str_replace("<<{$search}>>", $replacement, $plainmail);
-                    }
+                    $htmlmail = view(['template' => $htmlmail], $replacements)->render();
+                    $plainmail = view(['template' => $plainmail], $replacements)->render();
+
 
                     $iodef = new Iodef\Writer();
                     $iodef->formatOutput = true;

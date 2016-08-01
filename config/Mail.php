@@ -8,28 +8,15 @@ return [
     ],
 
     'templates' => [
+        'subject'       => '[' . date('Y-m-d') . '] Notification of (possible) abuse ticket(s)',
 
-        'ip_box'                        => '
-[Ticket <<TICKET_NUMBER>>] Reporting <<TICKET_TYPE_NAME>> (<<TICKET_CLASS_NAME>>) for IP addres: <<TICKET_IP>>
-<<TICKET_TYPE_DESCRIPTION>>
-More information at: <<IP_CONTACT_ASH_LINK>>
-                                           ',
-
-        'domain_box'                    => '
-[Ticket <<TICKET_NUMBER>>] Reporting <<TICKET_TYPE_NAME>> (<<TICKET_CLASS_NAME>>) for domain name: <<TICKET_DOMAIN>>
-<<TICKET_TYPE_DESCRIPTION>>
-More information at: <<DOMAIN_CONTACT_ASH_LINK>>
-                                           ',
-
-        'subject'                       => '[' . date('Y-m-d') . '] Notification of (possible) abuse ticket(s)',
-
-        'html_mail'                          => '
+        'html_mail'     => '
 <html>
 <img>
 <p>
 Dear Customer,
 </p><p>
-You have received this report because the <<TICKET_COUNT>> IP address(es) and/or domains linked
+You have received this report because the {{ $ticket_count }} IP address(es) and/or domains linked
 to this report are under your control. We ask you to examine this report and take the
 necessary action(s).
 </p><p>
@@ -38,7 +25,18 @@ have taken to resolve and prevent new reports. You can leave your feedback by cl
 the URL next to each report. The portal URL also contains additional information how
 to solve the problem this reports entails.
 </p><p>
-<<BOXES>>
+@foreach ($boxes as $box)
+@if ($box["ticket_notification_type"] == "ip")
+[Ticket {{ $box["ticket_number"] }}] Reporting {{ $box["ticket_type_name"] }} ({{ $box["ticket_class_name"] }}) for IP addres: {{ $box["ticket_ip"] }} <br/>
+{{ $box["ticket_type_description"] }} <br/>
+More information at: {{ $box["ip_contact_ash_link"] }} <br/>
+@else
+[Ticket {{ $box["ticket_number"] }}] Reporting {{ $box["ticket_type_name"] }} ({{ $box["ticket_class_name"] }}) for domain name: {{ $box["ticket_domain"] }} <br/>
+{{ $box["ticket_type_description"] }} <br/>
+More information at: {{ $box["domain_contact_ash_link"] }} <br/>
+@endif
+<br/>
+@endforeach
 </p><p>
 Some reports are not considered abuse but more informational to the fact you are running
 a service that might be susceptible to abuse in the feature. While we believe preventing
@@ -56,13 +54,13 @@ With regards,<br/>
 <br/>
 ISP Abuse Department
 </p>
-<img width="160px" src="<<LOGO_SRC>>"/>
+<img width="160px" src="{{ $logo_src }}"/>
 </body>
 </html>',
-        'plain_mail'                          => '
+        'plain_mail'    => '
 Dear Customer,
 
-You have received this report because the <<TICKET_COUNT>> IP address(es) and/or domains linked
+You have received this report because the {{ $ticket_count }} IP address(es) and/or domains linked
 to this report are under your control. We ask you to examine this report and take the
 necessary action(s).
 
@@ -71,7 +69,18 @@ have taken to resolve and prevent new reports. You can leave your feedback by cl
 the URL next to each report. The portal URL also contains additional information how
 to solve the problem this reports entails.
 
-<<BOXES>>
+@foreach ($boxes as $box)
+@if ($box["ticket_notification_type"] == "ip")
+[Ticket {{ $box["ticket_number"] }}] Reporting {{ $box["ticket_type_name"] }} ({{ $box["ticket_class_name"] }}) for IP addres: {{ $box["ticket_ip"] }}
+{{ $box["ticket_type_description"] }}
+More information at: {{ $box["ip_contact_ash_link"] }}
+@else
+[Ticket {{ $box["ticket_number"] }}] Reporting {{ $box["ticket_type_name"] }} ({{ $box["ticket_class_name"] }}) for domain name: {{ $box["ticket_domain"] }}
+{{ $box["ticket_type_description"] }}
+More information at: {{ $box["domain_contact_ash_link"] }}
+@endif
+
+@endforeach
 
 Some reports are not considered abuse but more informational to the fact you are running
 a service that might be susceptible to abuse in the feature. While we believe preventing
