@@ -3,6 +3,7 @@
 namespace AbuseIO\Notification;
 
 use AbuseIO\Models\Account;
+use AbuseIO\Models\Brand;
 use Config;
 use Swift_SmtpTransport;
 use Swift_Mailer;
@@ -103,6 +104,7 @@ class Mail extends Notification
                         $account = Account::getSystemAccount();
                     }
                     $logo_url = URL::to('/ash/logo/' . $account->brand_id);
+                    $brand = $account->brand;
 
                     $replacements = [
                         'boxes'                         => $boxes,
@@ -114,9 +116,37 @@ class Mail extends Notification
                     $htmlmail = config("{$this->configBase}.templates.html_mail");
                     $plainmail = config("{$this->configBase}.templates.plain_mail");
 
+                    // render the default templates
                     $htmlmail = view(['template' => $htmlmail], $replacements)->render();
                     $plainmail = view(['template' => $plainmail], $replacements)->render();
 
+                    // if the current brand has custom mail template, use them
+                    if ($brand->mail_custom_template) {
+                        // defensive programming, doubble check the templates
+                        $validator = \Validator::make(
+                            [
+                                'html'  => $brand->mail_template_html,
+                                'plain' => $brand->mail_template_plain,
+                            ],
+                            [
+                                'html'  => 'required|bladetemplate',
+                                'plain' => 'required|bladetemplate',
+                            ]);
+
+                        if ($validator->passes()) {
+                            try {
+                                // only use the templates if they pass the validation
+                                $htmloutput = view(['template' => $brand->mail_template_html], $replacements)->render();
+                                $plainoutput = view(['template' => $brand->mail_template_plain], $replacements)->render();
+
+                                // no errors occurred while rendering
+                                $htmlmail = $htmloutput;
+                                $plainmail = $plainoutput;
+                            } catch (\ErrorException $e) {
+                                Log::warning("Incorrect template, falling back to default: " . $e->getMessage());
+                            }
+                        }
+                    }
 
                     $iodef = new Iodef\Writer();
                     $iodef->formatOutput = true;
