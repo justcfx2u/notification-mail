@@ -4,6 +4,7 @@ namespace AbuseIO\Notification;
 
 use AbuseIO\Models\Account;
 use AbuseIO\Models\Brand;
+use Marknl\Iodef;
 use Config;
 use Swift_SmtpTransport;
 use Swift_Mailer;
@@ -11,7 +12,6 @@ use Swift_Message;
 use Swift_Signers_SMimeSigner;
 use Swift_Attachment;
 use URL;
-use Marknl\Iodef;
 
 /**
  * Class Mail
@@ -38,36 +38,36 @@ class Mail extends Notification
      * Sends out mail notifications for a specific $customerReference
      *
      * @param array $notifications
-     * @return boolean  Returns if succeeded or not
+     * @return boolean Returns if succeeded or not
      */
     public function send($notifications)
     {
         foreach ($notifications as $customerReference => $notificationTypes) {
 
-            $mails = [];
-            $tickets = [];
+            $mails    = [];
+            $tickets  = [];
             $accounts = [];
 
             foreach ($notificationTypes as $notificationType => $tickets) {
 
                 foreach ($tickets as $ticket) {
-                    $token['ip']        = $ticket->ash_token_ip;
-                    $token['domain']    = $ticket->ash_topen_domain;
-                    $ashUrl             = config('main.ash.url') . 'collect/' . $ticket->id . '/';
+                    $token['ip']     = $ticket->ash_token_ip;
+                    $token['domain'] = $ticket->ash_topen_domain;
+                    $ashUrl          = config('main.ash.url') . 'collect/' . $ticket->id . '/';
 
                     $this->addIodefObject($ticket, $token[$notificationType], $ashUrl);
 
                     $box = [
-                        'ticket_notification_type'      => $notificationType,
-                        'ip_contact_ash_link'           => $ashUrl . $token['ip'],
-                        'domain_contact_ash_link'       => $ashUrl . $token['domain'],
-                        'ticket_number'                 => $ticket->id,
-                        'ticket_ip'                     => $ticket->ip,
-                        'ticket_domain'                 => $ticket->domain,
-                        'ticket_type_name'              => trans("types.type.{$ticket->type_id}.name"),
-                        'ticket_type_description'       => trans("types.type.{$ticket->type_id}.description"),
-                        'ticket_class_name'             => trans("classifications.{$ticket->class_id}.name"),
-                        'ticket_event_count'            => $ticket->events->count(),
+                        'ticket_notification_type' => $notificationType,
+                        'ip_contact_ash_link'      => $ashUrl . $token['ip'],
+                        'domain_contact_ash_link'  => $ashUrl . $token['domain'],
+                        'ticket_number'            => $ticket->id,
+                        'ticket_ip'                => $ticket->ip,
+                        'ticket_domain'            => $ticket->domain,
+                        'ticket_type_name'         => trans("types.type.{$ticket->type_id}.name"),
+                        'ticket_type_description'  => trans("types.type.{$ticket->type_id}.description"),
+                        'ticket_class_name'        => trans("classifications.{$ticket->class_id}.name"),
+                        'ticket_event_count'       => $ticket->events->count(),
                     ];
 
                     /*
@@ -76,14 +76,14 @@ class Mail extends Notification
                      * notificiations we aggregate them here before sending.
                      */
                     if ($notificationType == 'ip') {
-                        $recipient = $ticket->ip_contact_email;
-                        $mails[$recipient][] = $box;
+                        $recipient            = $ticket->ip_contact_email;
+                        $mails[$recipient][]  = $box;
                         $accounts[$recipient] = Account::find($ticket->ip_contact_account_id);
                     }
 
                     if ($notificationType == 'domain') {
-                        $recipient = $ticket->domain_contact_email;
-                        $mails[$recipient][] = $box;
+                        $recipient            = $ticket->domain_contact_email;
+                        $mails[$recipient][]  = $box;
                         $accounts[$recipient] = Account::find($ticket->domain_contact_account_id);
                     }
                 }
@@ -107,17 +107,17 @@ class Mail extends Notification
                     $brand = $account->brand;
 
                     $replacements = [
-                        'boxes'                         => $boxes,
-                        'ticket_count'                  => count($tickets),
-                        'logo_src'                      => $logo_url,
+                        'boxes'        => $boxes,
+                        'ticket_count' => count($tickets),
+                        'logo_src'     => $logo_url,
                     ];
 
-                    $subject = config("{$this->configBase}.templates.subject");
-                    $htmlmail = config("{$this->configBase}.templates.html_mail");
+                    $subject   = config("{$this->configBase}.templates.subject");
+                    $htmlmail  = config("{$this->configBase}.templates.html_mail");
                     $plainmail = config("{$this->configBase}.templates.plain_mail");
 
                     // render the default templates
-                    $htmlmail = view(['template' => $htmlmail], $replacements)->render();
+                    $htmlmail  = view(['template' => $htmlmail], $replacements)->render();
                     $plainmail = view(['template' => $plainmail], $replacements)->render();
 
                     // if the current brand has custom mail template, use them
@@ -136,7 +136,7 @@ class Mail extends Notification
                         if ($validator->passes()) {
                             try {
                                 // only use the templates if they pass the validation
-                                $htmloutput = view(['template' => $brand->mail_template_html], $replacements)->render();
+                                $htmloutput  = view(['template' => $brand->mail_template_html], $replacements)->render();
                                 $plainoutput = view(['template' => $brand->mail_template_plain], $replacements)->render();
 
                                 // no errors occurred while rendering
@@ -153,9 +153,9 @@ class Mail extends Notification
                     $iodef->write(
                         [
                             [
-                                'name' => 'IODEF-Document',
+                                'name'       => 'IODEF-Document',
                                 'attributes' => $this->iodefDocument->getAttributes(),
-                                'value' => $this->iodefDocument,
+                                'value'      => $this->iodefDocument,
                             ]
                         ]
                     );
@@ -185,25 +185,13 @@ class Mail extends Notification
                     );
 
                     if (!empty(Config::get('mail.override_address'))) {
-                        $message->setTo(
-                            [
-                                Config::get('mail.override_address')
-                            ]
-                        );
+                        $message->setTo([Config::get('mail.override_address')]);
                     } else {
-                        $message->setTo(
-                            [
-                                $recipient
-                            ]
-                        );
+                        $message->setTo([$recipient]);
                     }
-                    
+
                     if (!empty(Config::get('main.notifications.bcc_enabled'))) {
-                        $message->setBcc(
-                            [
-                                (Config::get('main.notifications.bcc_address'))
-                            ]
-                        );
+                        $message->setBcc([(Config::get('main.notifications.bcc_address'))]);
                     }
 
                     $message->setPriority(1);
@@ -213,7 +201,9 @@ class Mail extends Notification
                     $message->setBody($htmlmail, 'text/html');
                     $message->addPart($plainmail, 'text/plain');
 
-                    $message->attach(Swift_Attachment::newInstance($XmlAttachmentData, 'iodef.xml', 'text/xml'));
+                    $message->attach(
+                        Swift_Attachment::newInstance(gzencode($XmlAttachmentData), 'iodef.xml.gz', 'application/gzip')
+                    );
 
                     $transport = Swift_SmtpTransport::newInstance();
 
@@ -226,19 +216,13 @@ class Mail extends Notification
                     $mailer = Swift_Mailer::newInstance($transport);
 
                     if (!$mailer->send($message)) {
-                        return $this->failed(
-                            "Error while sending message to {$recipient}"
-                        );
+                        return $this->failed("Error while sending message to {$recipient}");
                     }
-
                 }
-
             }
-
         }
 
         return $this->success();
-
     }
 
     /**
@@ -254,7 +238,7 @@ class Mail extends Notification
         $incident = new Iodef\Elements\Incident();
         $incident->setAttributes(
             [
-                'purpose'       => 'reporting'
+                'purpose' => 'reporting'
             ]
         );
 
@@ -262,9 +246,9 @@ class Mail extends Notification
         $ashlink = new Iodef\Elements\AdditionalData;
         $ashlink->setAttributes(
             [
-                'dtype'         => 'string',
-                'meaning'       => 'ASH Link',
-                'restriction'   => 'private',
+                'dtype'       => 'string',
+                'meaning'     => 'ASH Link',
+                'restriction' => 'private',
             ]
         );
         $ashlink->value = $ashUrl . $token;
@@ -274,9 +258,9 @@ class Mail extends Notification
         $ashtoken = new Iodef\Elements\AdditionalData;
         $ashtoken->setAttributes(
             [
-                'dtype'         => 'string',
-                'meaning'       => 'ASH Token',
-                'restriction'   => 'private',
+                'dtype'       => 'string',
+                'meaning'     => 'ASH Token',
+                'restriction' => 'private',
             ]
         );
         $ashtoken->value = $token;
@@ -286,9 +270,9 @@ class Mail extends Notification
         $ticketStatus = new Iodef\Elements\AdditionalData;
         $ticketStatus->setAttributes(
             [
-                'dtype'         => 'string',
-                'meaning'       => 'Ticket status',
-                'restriction'   => 'private',
+                'dtype'       => 'string',
+                'meaning'     => 'Ticket status',
+                'restriction' => 'private',
             ]
         );
 
@@ -299,9 +283,9 @@ class Mail extends Notification
         $contactStatus = new Iodef\Elements\AdditionalData;
         $contactStatus->setAttributes(
             [
-                'dtype'         => 'string',
-                'meaning'       => 'Contact status',
-                'restriction'   => 'private',
+                'dtype'       => 'string',
+                'meaning'     => 'Contact status',
+                'restriction' => 'private',
             ]
         );
         $contactStatus->value = $ticket->contact_status_id;
@@ -311,9 +295,9 @@ class Mail extends Notification
         $sourceID = new Iodef\Elements\AdditionalData;
         $sourceID->setAttributes(
             [
-                'dtype'         => 'string',
-                'meaning'       => 'SourceID',
-                'restriction'   => 'private',
+                'dtype'       => 'string',
+                'meaning'     => 'SourceID',
+                'restriction' => 'private',
             ]
         );
         $sourceID->value = config('app.id');
@@ -323,8 +307,8 @@ class Mail extends Notification
         $incidentID = new Iodef\Elements\IncidentID();
         $incidentID->setAttributes(
             [
-                'name'          => 'https://myhost.isp.local/api/',
-                'restriction'   => 'need-to-know',
+                'name'        => 'https://myhost.isp.local/api/',
+                'restriction' => 'need-to-know',
             ]
         );
         $incidentID->value($ticket->id);
@@ -338,16 +322,16 @@ class Mail extends Notification
         $assessment = new Iodef\Elements\Assessment();
         $impact = new Iodef\Elements\Impact();
         $severity = [
-            'INFO' => 'low',
-            'ABUSE' => 'medium',
+            'INFO'       => 'low',
+            'ABUSE'      => 'medium',
             'ESCALATION' => 'high',
         ];
         echo $ticket->class;
         $impact->setAttributes(
             [
-                'type'          => 'ext-value',
-                'ext-type'      => $ticket->class_id,
-                'severity'      => $severity[$ticket->type_id],
+                'type'     => 'ext-value',
+                'ext-type' => $ticket->class_id,
+                'severity' => $severity[$ticket->type_id],
             ]
         );
         $assessment->addChild($impact);
@@ -357,10 +341,10 @@ class Mail extends Notification
         $contact = new Iodef\Elements\Contact();
         $contact->setAttributes(
             [
-                'role'          => 'creator',
-                'type'          => 'ext-value',
-                'ext-type'      => 'Software',
-                'restriction'   => 'need-to-know',
+                'role'        => 'creator',
+                'type'        => 'ext-value',
+                'ext-type'    => 'Software',
+                'restriction' => 'need-to-know',
             ]
         );
 
@@ -378,9 +362,9 @@ class Mail extends Notification
         $contact = new Iodef\Elements\Contact();
         $contact->setAttributes(
             [
-                'role'          => 'irt',
-                'type'          => 'organization',
-                'restriction'   => 'need-to-know',
+                'role'        => 'irt',
+                'type'        => 'organization',
+                'restriction' => 'need-to-know',
             ]
         );
 
@@ -406,7 +390,7 @@ class Mail extends Notification
                 $system->setAttributes(
                     [
                         'category' => 'source',
-                        'spoofed' => 'no'
+                        'spoofed'  => 'no'
                     ]
                 );
 
@@ -420,7 +404,7 @@ class Mail extends Notification
                     } elseif (filter_var($ticket->ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
                         $category['category'] = 'ipv6-addr';
                     } else {
-                        $category['category'] = 'ext-value';
+                        $category['category']     = 'ext-value';
                         $category['ext-category'] = 'unknown';
 
                     }
@@ -446,11 +430,7 @@ class Mail extends Notification
 
                 // Now actually add event data
                 $record = new Iodef\Elements\Record;
-                $record->setAttributes(
-                    [
-                        'restriction'   => 'need-to-know',
-                    ]
-                );
+                $record->setAttributes(['restriction' => 'need-to-know']);
 
                 $recordData = new Iodef\Elements\RecordData;
 
@@ -466,7 +446,7 @@ class Mail extends Notification
                 $recordItem->setAttributes(
                     [
                         'dtype'     => 'ext-value',
-                        'ext-dtype'  => 'json',
+                        'ext-dtype' => 'json',
                     ]
                 );
                 $recordItem->value = $event->information;
@@ -492,7 +472,7 @@ class Mail extends Notification
                 $historyItem = new Iodef\Elements\HistoryItem;
                 $historyItem->setAttributes(
                     [
-                        'action' => 'status-new-info',
+                        'action'      => 'status-new-info',
                         'restriction' => 'need-to-know'
                     ]
                 );
