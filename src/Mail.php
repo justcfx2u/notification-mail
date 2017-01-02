@@ -475,6 +475,7 @@ class Mail extends Notification
         if ($ticket->notes->count() >= 1) {
             $history = new Iodef\Elements\History;
 
+            $elementCounter = 0;
             foreach ($ticket->notes as $note) {
                 if ($note->hidden == true) {
                     continue;
@@ -513,7 +514,9 @@ class Mail extends Notification
                 $history->addChild($historyItem);
             }
 
-            $incident->addChild($history);
+            if($elementCounter >= 1) {
+                $incident->addChild($history);
+            }
         }
 
         // Add incident to the document
