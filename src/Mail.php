@@ -198,8 +198,19 @@ class Mail extends Notification
 
                     $message->setSubject($subject);
 
-                    $message->setBody($htmlmail, 'text/html');
-                    $message->addPart($plainmail, 'text/plain');
+                    if(config("{$this->configBase}.notification.prefer_html_body")) {
+                        $message->setBody($htmlmail, 'text/html');
+
+                        if(config("{$this->configBase}.notification.text_part_enabled")) {
+                            $message->addPart($plainmail, 'text/plain');
+                        }
+                    } else {
+                        $message->setBody($plainmail, 'text/plain');
+
+                        if(config("{$this->configBase}.notification.html_part_enabled")) {
+                            $message->addPart($htmlmail, 'text/html');
+                        }
+                    }
 
                     $message->attach(
                         Swift_Attachment::newInstance(gzencode($XmlAttachmentData), 'iodef.xml.gz', 'application/gzip')

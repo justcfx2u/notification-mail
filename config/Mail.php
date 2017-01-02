@@ -5,6 +5,9 @@ return [
         'name'          => 'Mail',
         'description'   => 'Sends notifications using e-mail',
         'enabled'       => true,
+        'html_part_enabled' => false,       //wither the html part should be used at all
+        'text_part_enabled' => true,        //wither the text part should be used at all
+        'prefer_html_body'  => false,       //if enabled, HTML body with TEXT addition
     ],
 
     'templates' => [
