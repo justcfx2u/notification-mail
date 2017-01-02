@@ -143,7 +143,6 @@ class Mail extends Notification
                     );
                     $XmlAttachmentData = $iodef->outputMemory();
 
-
                     if (!empty(Config::get('mail.smime.enabled')) &&
                         (Config::get('mail.smime.enabled')) === true &&
                         !empty(Config::get('mail.smime.certificate')) &&
@@ -173,13 +172,9 @@ class Mail extends Notification
                             ]
                         );
                     } else {
-                        $message->setTo(
-                            [
-                                $recipient
-                            ]
-                        );
+                        $message->setTo(explode(',', $recipient));
                     }
-                    
+                   
                     if (!empty(Config::get('main.notifications.bcc_enabled'))) {
                         $message->setBcc(
                             [
@@ -192,10 +187,21 @@ class Mail extends Notification
 
                     $message->setSubject($subject);
 
-                    $message->setBody($htmlmail, 'text/html');
-                    $message->addPart($plainmail, 'text/plain');
+                    if(config("{$this->configBase}.notification.prefer_html_body")) {
+                        $message->setBody($htmlmail, 'text/html');
 
-                    $message->attach(Swift_Attachment::newInstance($XmlAttachmentData, 'iodef.xml', 'text/xml'));
+                        if(config("{$this->configBase}.notification.text_part_enabled")) {
+                            $message->addPart($plainmail, 'text/plain');
+                        }
+                    } else {
+                        $message->setBody($plainmail, 'text/plain');
+
+                        if(config("{$this->configBase}.notification.html_part_enabled")) {
+                            $message->addPart($htmlmail, 'text/html');
+                        }
+                    }
+
+                    $message->attach(Swift_Attachment::newInstance(gzencode($XmlAttachmentData), 'iodef.xml.gz', 'application/gzip'));
 
                     $transport = Swift_SmtpTransport::newInstance();
 
@@ -466,6 +472,7 @@ class Mail extends Notification
         if ($ticket->notes->count() >= 1) {
             $history = new Iodef\Elements\History;
 
+            $elementCounter = 0;
             foreach ($ticket->notes as $note) {
                 if ($note->hidden == true) {
                     continue;
@@ -498,13 +505,21 @@ class Mail extends Notification
                         'meaning' => 'text',
                     ]
                 );
-                $historyNote->value = "{$note->text}";
+
+                if(empty(trim($note->text))) {
+                    $historyNote->value = false;
+                } else {
+                    $historyNote->value = "{$note->text}";
+                }
                 $historyItem->addChild($historyNote);
 
                 $history->addChild($historyItem);
+                $elementCounter++;
             }
 
-            $incident->addChild($history);
+            if($elementCounter >= 1) {
+                $incident->addChild($history);
+            }
         }
 
         // Add incident to the document
