@@ -187,7 +187,7 @@ class Mail extends Notification
                     if (!empty(Config::get('mail.override_address'))) {
                         $message->setTo([Config::get('mail.override_address')]);
                     } else {
-                        $message->setTo([$recipient]);
+                        $message->setTo(explode(',', $recipient));
                     }
 
                     if (!empty(Config::get('main.notifications.bcc_enabled'))) {
