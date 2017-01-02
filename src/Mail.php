@@ -508,7 +508,12 @@ class Mail extends Notification
                         'meaning' => 'text',
                     ]
                 );
-                $historyNote->value = "{$note->text}";
+
+                if(empty(trim($note->text))) {
+                    $historyNote->value = false;
+                } else {
+                    $historyNote->value = "{$note->text}";
+                }
                 $historyItem->addChild($historyNote);
 
                 $history->addChild($historyItem);
