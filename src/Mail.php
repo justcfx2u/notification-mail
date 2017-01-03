@@ -51,7 +51,7 @@ class Mail extends Notification
 
                 foreach ($tickets as $ticket) {
                     $token['ip']        = md5($ticket->id . $ticket->ip . $ticket->ip_contact_reference);
-                    $token['domain']    = md5($ticket->id . $ticket->ip . $ticket->domain_contact_reference);
+                    $token['domain']    = md5($ticket->id . $ticket->domain . $ticket->domain_contact_reference);
                     $ashUrl             = config('main.ash.url') . 'collect/' . $ticket->id . '/';
 
                     $this->addIodefObject($ticket, $token[$notificationType], $ashUrl);
