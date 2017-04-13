@@ -47,6 +47,7 @@ class Mail extends Notification
             $mails    = [];
             $tickets  = [];
             $accounts = [];
+            $evidences = [];
 
             foreach ($notificationTypes as $notificationType => $tickets) {
 
@@ -69,6 +70,15 @@ class Mail extends Notification
                         'ticket_class_name'        => trans("classifications.{$ticket->class_id}.name"),
                         'ticket_event_count'       => $ticket->events->count(),
                     ];
+
+
+                    if (Config::get('main.notifications.attach_copyright_evidence')) {
+                        if($ticket->class_id === 'COPYRIGHT_INFRINGEMENT') {
+                            foreach ($ticket->events as $event) {
+                                array_push($evidences, $event->evidence->getEmlAttribute());
+                            }
+                         }
+                    }
 
                     /*
                      * Even that all these tickets relate to the same customer reference, the contacts might be
@@ -215,6 +225,12 @@ class Mail extends Notification
                     $message->attach(
                         Swift_Attachment::newInstance(gzencode($XmlAttachmentData), 'iodef.xml.gz', 'application/gzip')
                     );
+
+                    foreach ($evidences as $index=>$evidence) {
+                        $message->attach(
+                            Swift_Attachment::newInstance($evidence, 'evidence_' . $index++ . '.eml', 'message/rfc822')
+                        );
+                    }
 
                     $transport = Swift_SmtpTransport::newInstance();
 
